@@ -1,8 +1,11 @@
 ajaxterm={};
 ajaxterm.Terminal_ctor=function(id,width,height) {
 	var ie=0;
-	if(window.ActiveXObject)
+	//TODO use jquery method to detect browser
+	if(window.ActiveXObject){
 		ie=1;
+	}
+		
 	var sid=""+Math.round(Math.random()*1000000000);
 	var query0="s="+sid+"&w="+width+"&h="+height;
 	var query1=query0+"&c=1&k=";
@@ -118,13 +121,15 @@ ajaxterm.Terminal_ctor=function(id,width,height) {
 						window.clearTimeout(error_timeout);
 						de=r.responseXML.documentElement;
 						if(de.tagName=="pre") {
-							if(ie) {
-								Sarissa.updateContentFromNode(de, dterm);
+							var content;
+							if(window.XMLSerializer){
+								content = de.outerHTML?de.outerHTML:(de.xml || (new XMLSerializer()).serializeToString(de));
 							} else {
-								Sarissa.updateContentFromNode(de, dterm);
+								content = de.outerHTML?de.outerHTML:de.xml;								
 //								old=div.firstChild;
 //								div.replaceChild(de,old);
 							}
+							$(dterm).html(content);
 							rmax=100;
 						} else {
 							rmax*=2;
@@ -187,7 +192,31 @@ ajaxterm.Terminal_ctor=function(id,width,height) {
 			else if (kc==8) k=String.fromCharCode(127);  // Backspace
 			else if (kc==27) k=String.fromCharCode(27); // Escape
 			else {
-				if (kc==33) k="[5~";        // PgUp
+				k = functionKeyConvert(kc);
+			}
+		} else {
+			if (kc==8){
+				k=String.fromCharCode(127);  // Backspace
+            }else{
+				k=String.fromCharCode(kc);
+		    }
+		}
+		if(k.length) {
+//			queue(encodeURIComponent(k));
+			if(k=="+") {
+				queue("%2B");
+			} else {
+				queue(escape(k));
+			}
+		}
+		ev.cancelBubble=true;
+		if (ev.stopPropagation) ev.stopPropagation();
+		if (ev.preventDefault)  ev.preventDefault();
+		return false;
+	}
+	function functionKeyConvert(kc){
+		var k="";
+		if (kc==33) k="[5~";        // PgUp
 				else if (kc==34) k="[6~";   // PgDn
 				else if (kc==35) k="[4~";   // End
 				else if (kc==36) k="[1~";   // Home
@@ -209,32 +238,15 @@ ajaxterm.Terminal_ctor=function(id,width,height) {
 				else if (kc==121) k="[21~"; // F10
 				else if (kc==122) k="[23~"; // F11
 				else if (kc==123) k="[24~"; // F12
-				if (k.length) {
+		if (k.length) {
 					k=String.fromCharCode(27)+k;
 				}
-			}
-		} else {
-			if (kc==8)
-				k=String.fromCharCode(127);  // Backspace
-			else
-				k=String.fromCharCode(kc);
-		}
-		if(k.length) {
-//			queue(encodeURIComponent(k));
-			if(k=="+") {
-				queue("%2B");
-			} else {
-				queue(escape(k));
-			}
-		}
-		ev.cancelBubble=true;
-		if (ev.stopPropagation) ev.stopPropagation();
-		if (ev.preventDefault)  ev.preventDefault();
-		return false;
+		return k;
 	}
 	function keydown(ev) {
 		if (!ev) var ev=window.event;
-		if (ie) {
+		//TODO fix keydown issue and delete function issue.
+		// if (ie) {
 //			s="kd keyCode="+ev.keyCode+" which="+ev.which+" shiftKey="+ev.shiftKey+" ctrlKey="+ev.ctrlKey+" altKey="+ev.altKey;
 //			debug(s);
 			o={9:1,8:1,27:1,33:1,34:1,35:1,36:1,37:1,38:1,39:1,40:1,45:1,46:1,112:1,
@@ -243,7 +255,7 @@ ajaxterm.Terminal_ctor=function(id,width,height) {
 				ev.which=0;
 				return keypress(ev);
 			}
-		}
+		// }
 	}
 	function init() {
 		sled.appendChild(document.createTextNode('\xb7'));
@@ -267,8 +279,22 @@ ajaxterm.Terminal_ctor=function(id,width,height) {
 			opt_color.attachEvent("onclick", do_color);
 			opt_paste.attachEvent("onclick", do_paste);
 		}
-		document.onkeypress=keypress;
-		document.onkeydown=keydown;
+		$(document).keypress(function(e){
+            if (!e) e=window.event;
+            return keypress(e);
+		});
+		$(document).keydown(function(e){
+			var code = e.which;
+			var c = String.fromCharCode(code);                        
+            if (!e) var e=window.event;
+
+			o={9:1,8:1,27:1,33:1,34:1,35:1,36:1,37:1,38:1,39:1,40:1,45:1,46:1,112:1,
+			113:1,114:1,115:1,116:1,117:1,118:1,119:1,120:1,121:1,122:1,123:1};
+			if (o[e.keyCode] || e.ctrlKey || e.altKey) {
+				e.which=0;
+				return keypress(e);
+			}
+		});
 		timeout=window.setTimeout(update,100);
 	}
 	init();
