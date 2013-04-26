@@ -1,6 +1,7 @@
 ajaxterm={};
 ajaxterm.Terminal_ctor=function(id,width,height) {
 	var ie=0;
+	var isChrome=/chrome/.test(navigator.userAgent.toLowerCase());
 	//TODO use jquery method to detect browser
 	if(window.ActiveXObject){
 		ie=1;
@@ -21,7 +22,6 @@ ajaxterm.Terminal_ctor=function(id,width,height) {
 	var sled=document.createElement('span');
 	var opt_get=document.createElement('a');
 	var opt_color=document.createElement('a');
-	var opt_paste=document.createElement('a');
 	var sdebug=document.createElement('span');
 	var dterm=document.createElement('div');
 
@@ -49,50 +49,6 @@ ajaxterm.Terminal_ctor=function(id,width,height) {
 		else
 			query1=query0+"&k=";
 		debug('Color '+opt_color.className);
-	}
-	function mozilla_clipboard() {
-		 // mozilla sucks
-		try {
-			netscape.security.PrivilegeManager.enablePrivilege("UniversalXPConnect");
-		} catch (err) {
-			debug('Access denied, <a href="http://kb.mozillazine.org/Granting_JavaScript_access_to_the_clipboard" target="_blank">more info</a>');
-			return undefined;
-		}
-		var clip = Components.classes["@mozilla.org/widget/clipboard;1"].createInstance(Components.interfaces.nsIClipboard);
-		var trans = Components.classes["@mozilla.org/widget/transferable;1"].createInstance(Components.interfaces.nsITransferable);
-		if (!clip || !trans) {
-			return undefined;
-		}
-		trans.addDataFlavor("text/unicode");
-		clip.getData(trans,clip.kGlobalClipboard);
-		var str=new Object();
-		var strLength=new Object();
-		try {
-			trans.getTransferData("text/unicode",str,strLength);
-		} catch(err) {
-			return "";
-		}
-		if (str) {
-			str=str.value.QueryInterface(Components.interfaces.nsISupportsString);
-		}
-		if (str) {
-			return str.data.substring(0,strLength.value / 2);
-		} else {
-			return "";
-		}
-	}
-	function do_paste(event) {
-		var p=undefined;
-		if (window.clipboardData) {
-			p=window.clipboardData.getData("Text");
-		} else if(window.netscape) {
-			p=mozilla_clipboard();
-		}
-		if (p) {
-			debug('Pasted');
-			queue(encodeURIComponent(p));
-		} else {
-		}
 	}
 	function update() {
 //		debug("ts: "+((new Date).getTime())+" rmax:"+rmax);
@@ -246,7 +202,7 @@ ajaxterm.Terminal_ctor=function(id,width,height) {
 	function keydown(ev) {
 		if (!ev) var ev=window.event;
 		//TODO fix keydown issue and delete function issue.
-		// if (ie) {
+//		if (ie) {
 //			s="kd keyCode="+ev.keyCode+" which="+ev.which+" shiftKey="+ev.shiftKey+" ctrlKey="+ev.ctrlKey+" altKey="+ev.altKey;
 //			debug(s);
 			o={9:1,8:1,27:1,33:1,34:1,35:1,36:1,37:1,38:1,39:1,40:1,45:1,46:1,112:1,
@@ -255,7 +211,7 @@ ajaxterm.Terminal_ctor=function(id,width,height) {
 				ev.which=0;
 				return keypress(ev);
 			}
-		// }
+//		}
 	}
 	function init() {
 		sled.appendChild(document.createTextNode('\xb7'));
@@ -265,7 +221,6 @@ ajaxterm.Terminal_ctor=function(id,width,height) {
 		opt_add(opt_color,'Colors');
 		opt_color.className='on';
 		opt_add(opt_get,'GET');
-		opt_add(opt_paste,'Paste');
 		dstat.appendChild(sdebug);
 		dstat.className='stat';
 		div.appendChild(dstat);
@@ -273,11 +228,9 @@ ajaxterm.Terminal_ctor=function(id,width,height) {
 		if(opt_color.addEventListener) {
 			opt_get.addEventListener('click',do_get,true);
 			opt_color.addEventListener('click',do_color,true);
-			opt_paste.addEventListener('click',do_paste,true);
 		} else {
 			opt_get.attachEvent("onclick", do_get);
 			opt_color.attachEvent("onclick", do_color);
-			opt_paste.attachEvent("onclick", do_paste);
 		}
 		$(document).keypress(function(e){
             if (!e) e=window.event;
@@ -287,12 +240,13 @@ ajaxterm.Terminal_ctor=function(id,width,height) {
 			var code = e.which;
 			var c = String.fromCharCode(code);                        
             if (!e) var e=window.event;
-
-			o={9:1,8:1,27:1,33:1,34:1,35:1,36:1,37:1,38:1,39:1,40:1,45:1,46:1,112:1,
-			113:1,114:1,115:1,116:1,117:1,118:1,119:1,120:1,121:1,122:1,123:1};
-			if (o[e.keyCode] || e.ctrlKey || e.altKey) {
-				e.which=0;
-				return keypress(e);
+            if(ie || isChrome){
+				o={9:1,8:1,27:1,33:1,34:1,35:1,36:1,37:1,38:1,39:1,40:1,45:1,46:1,112:1,
+				113:1,114:1,115:1,116:1,117:1,118:1,119:1,120:1,121:1,122:1,123:1};
+				if (o[e.keyCode] || e.ctrlKey || e.altKey) {
+					e.which=0;
+					return keypress(e);
+				}
 			}
 		});
 		timeout=window.setTimeout(update,100);
